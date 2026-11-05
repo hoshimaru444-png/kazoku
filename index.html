@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="24問に答えると、家族との距離感を12項目のグラフとランク(S〜F)で表示します。">
+<meta name="theme-color" content="#2F4A8A">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="家族の距離感">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font-size:14px;font-family:system-ui,sans-serif}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<title>家族の距離感診断</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: 一列の問診票。上に結果カード(レーダー+ランク)、下に12問。答えるたびに結果が即時更新 */
+:root{
+  --bg:#EEF1F4; --paper:#FFFFFF; --fg:#1C2230; --muted:#5E6878; --line:#D5DBE3;
+  --ai:#2F4A8A; --ai-soft:#DCE3F2; --shu:#B5472F; --ok:#2F7A5B;
+  --display:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141922; --paper:#1C2330; --fg:#E6EAF1; --muted:#9AA4B5; --line:#2E3747;
+  --ai:#8FA6E0; --ai-soft:#26314A; --shu:#E0806A; --ok:#6CC39C; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141922; --paper:#1C2330; --fg:#E6EAF1; --muted:#9AA4B5; --line:#2E3747;
+  --ai:#8FA6E0; --ai-soft:#26314A; --shu:#E0806A; --ok:#6CC39C; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.7}
+.wrap{max-width:680px;margin:0 auto;padding-block:28px 64px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:20px}
+h1{font-family:var(--display);font-weight:800;font-size:1.9rem;margin:0;letter-spacing:.04em;text-wrap:balance}
+.lead{color:var(--muted);margin:0}
+.note{font-size:.85rem;color:var(--muted);background:var(--ai-soft);padding:10px 14px;border-radius:8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.note span{min-width:0;flex:1 1 220px}
+button{font:inherit;cursor:pointer}
+.btn{border:1px solid var(--ai);background:transparent;color:var(--ai);padding:6px 14px;border-radius:999px;font-size:.85rem}
+.btn:focus-visible,.opt input:focus-visible+span{outline:2px solid var(--ai);outline-offset:2px}
+.result{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:620px){.result{grid-template-columns:260px 1fr;align-items:center}}
+.rank-row{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.rank{font-family:var(--display);font-weight:800;font-size:4rem;line-height:1;color:var(--ai)}
+.rank-name{font-weight:700;font-size:1.1rem}
+.meters{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.meter{display:grid;grid-template-columns:5.5em 1fr 3em;gap:8px;align-items:center;font-size:.85rem}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ai);border-radius:4px;transition:width .3s}
+.bar.st i{background:var(--ok)}
+.meter b{font-variant-numeric:tabular-nums;text-align:right;font-weight:500}
+.comment{font-size:.9rem;margin:10px 0 0}
+.flag{color:var(--shu);font-size:.85rem;margin:6px 0 0}
+svg text{fill:var(--muted);font-size:10px;font-family:var(--body)}
+.group-h{font-family:var(--display);font-weight:600;font-size:1.15rem;margin:8px 0 0;display:flex;gap:10px;align-items:baseline}
+.group-h small{font-family:var(--body);font-size:.8rem;color:var(--muted);font-weight:400}
+.q{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.q-head{display:flex;gap:8px;align-items:baseline}
+.tag{font-size:.72rem;letter-spacing:.08em;color:var(--ai);border:1px solid var(--ai);border-radius:4px;padding:0 6px;white-space:nowrap}
+.q-title{font-weight:700;margin:0 0 4px;padding:0;float:left;width:100%}
+.q-title .tag{margin-right:6px;font-weight:500;vertical-align:2px}
+.opts{clear:both}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:block}
+.opt input{position:absolute;opacity:0}
+.opt span{display:block;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:.9rem;transition:background .15s,border-color .15s}
+.opt input:checked+span{border-color:var(--ai);background:var(--ai-soft);font-weight:500}
+.foot{font-size:.8rem;color:var(--muted)}
+.result.empty{display:flex;align-items:center;justify-content:center;min-height:220px;text-align:center}
+.result.empty>svg,.result.empty .rank,.result.empty .meters,.result.empty .legend,.result.empty .compare,.result.empty .comment,.result.empty .flag{display:none}
+.result.empty .rank-row{justify-content:center}
+.result.empty .rank-name{color:var(--muted);font-weight:500}
+.src{font-size:.75rem;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;line-height:1.65}
+.src h3{font-size:.8rem;margin:0 0 4px;font-weight:700}
+.src p{margin:0 0 6px}
+.src ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:3px}
+.src a{color:var(--ai);margin-left:4px;overflow-wrap:anywhere}
+.legend{display:flex;gap:14px;font-size:.78rem;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.legend i{display:inline-block;width:18px;height:0;border-top:2px solid var(--ai);vertical-align:middle;margin-right:5px}
+.legend i.dash{border-top:2px dashed var(--shu)}
+.compare{font-size:.88rem;margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line)}
+.compare b{color:var(--shu)}
+.types h2{font-family:var(--display);font-weight:600;font-size:1.3rem;margin:0}
+.types>p{margin:4px 0 12px;color:var(--muted);font-size:.88rem}
+.tgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(min-width:620px){.tgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.tcard{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:left;color:var(--fg);display:flex;flex-direction:column;gap:4px;min-width:0}
+.tcard[aria-pressed="true"]{border-color:var(--shu);box-shadow:0 0 0 1px var(--shu)}
+.tcard.mine .tl::after{content:"あなた";font-family:var(--body);font-size:.68rem;font-weight:500;color:var(--paper);background:var(--ai);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:4px}
+.tcard:focus-visible{outline:2px solid var(--ai);outline-offset:2px}
+.tl{font-family:var(--display);font-weight:800;font-size:1.5rem;line-height:1;color:var(--ai)}
+.tn{font-weight:700;font-size:.88rem}
+.tt{font-size:.78rem;color:var(--muted);line-height:1.55}
+.tcard svg{width:100%;height:auto}
+
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>家族の距離感診断</h1>
+    <p class="lead">家族社会学の「世代間連帯モデル」(Bengtson)の6要素に、対立・修復・干渉などを足し、12項目を2問ずつ、計24問で測ります。答えるたびに結果が変わります。</p>
+  </header>
+
+  <div class="note" id="note"><span>父・母・きょうだい・家族全体など、誰について答えるかを決めてから始めてください。相手を変えるときは全部クリアでやり直せます。</span><button class="btn" id="reset" type="button">全部クリア</button></div>
+
+  <section class="result empty" aria-live="polite">
+    <svg id="radar" viewBox="0 0 260 260" role="img" aria-label="12項目のレーダーチャート(各項目2問の平均)"></svg>
+    <div>
+      <div class="rank-row"><span class="rank" id="rank">–</span><span class="rank-name" id="rankName">回答待ち</span></div>
+      <div class="meters">
+        <div class="meter"><span>近さ</span><div class="bar"><i id="mClose"></i></div><b id="vClose">–</b></div>
+        <div class="meter"><span>丈夫さ</span><div class="bar st"><i id="mStable"></i></div><b id="vStable">–</b></div>
+      </div>
+      <p class="comment" id="comment"></p>
+      <p class="flag" id="flag"></p>
+      <div class="legend"><span><i></i>あなたの回答</span><span><i class="dash"></i><span id="cmpName">比べるタイプ</span>の典型</span></div>
+      <p class="compare" id="compare"></p>
+    </div>
+  </section>
+
+  <p class="foot" id="progress"></p>
+  <div id="questions"></div>
+
+  <p class="foot">ランクは「近さ」で決まり、対立が多く修復が難しい場合は近さに関係なくE、意図的に連絡を断っている場合はFになります。「丈夫さ」は揉めにくさと支え合いの度合いで、ランクとは別に表示します。近さが低いことは、それだけで悪いという意味ではありません。</p>
+
+  <section class="types">
+    <h2>タイプ図鑑</h2>
+    <p>各タイプのグラフは、研究や実際の声から描いた典型的な形の目安です(統計値ではありません)。カードを押すと、上のグラフに点線で重なり、あなたとの違いが出ます。</p>
+    <div class="tgrid" id="tgrid"></div>
+  </section>
+
+  <footer class="src">
+    <h3>参考にしたもの</h3>
+    <p>項目とタイプ分けは次の研究や調査をもとに組み立てた独自のもので、各タイプのグラフの形は統計から出した値ではなく、そこから描いた目安です。</p>
+    <ul>
+      <li>項目の枠組み:Bengtsonの世代間連帯モデル(構造・接触・感情・価値観・機能・規範の6要素)</li>
+      <li>タイプ分け:Silverstein &amp; Bengtson(1997)の成人親子の5類型(密着・交流・親密だが遠距離・義務・疎遠)<a href="https://www.academia.edu/15432882/Intergenerational_Solidarity_and_the_Structure_of_Adult_Child_Parent_Relationships_in_American_Families" target="_blank" rel="noopener">論文</a></li>
+      <li>近すぎ・遠すぎの考え方:Olsonの円環モデル(家族の結びつき4段階)<a href="https://www.tatsuki.org/?page_id=1221" target="_blank" rel="noopener">立木研究室</a></li>
+      <li>疎遠・断絶の段階:Pillemerの家族疎遠研究、連絡→低接触→断絶の連続体<a href="https://www.psychologytoday.com/ie/blog/when-family-hurts/202608/from-connection-to-no-contact-the-continuum-of-estrangement" target="_blank" rel="noopener">記事</a></li>
+      <li>日本の会う・帰省・連絡の頻度:<a href="https://kimonoand.kimono-yamato.co.jp/blog/6203/" target="_blank" rel="noopener">着物やまと調査</a>、<a href="https://prtimes.jp/main/html/rd/p/000000179.000016136.html" target="_blank" rel="noopener">ネット調査(PR TIMES)</a>、<a href="https://www.excite.co.jp/news/article/Prtimes_2023-12-02-55654-100/" target="_blank" rel="noopener">帰省調査</a></li>
+      <li>実際の声:<a href="https://select.mamastar.jp/314621" target="_blank" rel="noopener">ママスタ</a>、<a href="https://okwave.jp/qa/q8659150.html" target="_blank" rel="noopener">OKWAVE</a>、<a href="https://detail.chiebukuro.yahoo.co.jp/qa/question_detail/q12325047192" target="_blank" rel="noopener">Yahoo!知恵袋</a> など</li>
+    </ul>
+  </footer>
+</div>
+
+<script>
+const AX=[
+ {k:"距離",g:"近さ"},{k:"連絡",g:"近さ"},{k:"会う",g:"近さ"},{k:"居心地",g:"近さ"},{k:"本音",g:"近さ"},
+ {k:"価値観",g:"丈夫さ"},{k:"助け合い",g:"丈夫さ"},{k:"義務感",g:"丈夫さ"},{k:"干渉",g:"丈夫さ"},{k:"期待",g:"丈夫さ"},{k:"対立",g:"丈夫さ"},{k:"修復",g:"丈夫さ"}
+];
+const Q=[
+ {a:0,t:"実家・家族の住まいまでの距離は？",o:["同居している","1時間以内ですぐ行ける","日帰りできるが気軽ではない","泊まりがけでないと行けない"],s:[3,2,1,0]},
+ {a:0,t:"急な用事があったら、その日のうちに駆けつけられる？",o:["すぐ行ける","半日あれば行ける","その日のうちは難しい","数日かかる"],s:[3,2,1,0]},
+ {a:1,t:"どのくらいの頻度で連絡を取る？",o:["週に1回以上","月に1〜数回","数か月に1回","年に1回以下","意図的に連絡を断っている"],s:[3,2,1,0,-1]},
+ {a:1,t:"連絡の中身は？",o:["用がなくても雑談する","近況を報告し合う","用件とお礼くらい","ほとんどやり取りがない"],s:[3,2,1,0]},
+ {a:2,t:"どのくらいの頻度で会う？",o:["月に1回以上","年に数回(盆・正月+α)","年に1回くらい","数年に1回・冠婚葬祭のみ"],s:[3,2,1,0]},
+ {a:2,t:"帰省や訪問はどんな気持ちで？",o:["会いたいから自分から行く","誘われれば行く","顔を見せておく、という義務感","できれば避けたい"],s:[3,2,1,0]},
+ {a:3,t:"一緒にいて楽しい？",o:["楽しみにしている","まあ楽しい","楽しくはないが苦痛でもない","正直しんどい"],s:[3,2,1,0]},
+ {a:3,t:"会話の間や沈黙はどう感じる？",o:["話が弾んで沈黙が少ない","間が多いが誰も気にしない","間が気まずい","緊張して落ち着かない"],s:[3,2,1,0]},
+ {a:4,t:"悩みや本音を話せる？",o:["何でも話せる","ある程度は話せる","大事なことだけ報告する","ほとんど話さない"],s:[3,2,1,0]},
+ {a:4,t:"本当に困ったとき、頼れると思う？",o:["真っ先に頼る","頼れば応えてくれると思う","頼れなくはないが頼らない","頼れない・頼りたくない"],s:[3,2,1,0]},
+ {a:5,t:"生き方や考え方は揃っている？",o:["かなり揃っている","おおむね同じ","ところどころずれる","大きく違う"],s:[3,2,1,0]},
+ {a:5,t:"自分の大きな決断(転職・結婚など)をどう受け止められる？",o:["口を出さず受け入れてくれる","意見は言うが尊重してくれる","納得してもらうのに苦労する","否定される"],s:[3,2,1,0]},
+ {a:6,t:"物・お金・手間のやり取りは？",o:["日常的に助け合っている","物などのやり取りがときどきある","ほぼない","一方的に頼られている・頼っている"],s:[3,2,1,0]},
+ {a:6,t:"ありがとうを伝え合う？",o:["お互い自然に伝える","受け取ったら伝える","あまり言わない","不満のほうが多い"],s:[3,2,1,0]},
+ {a:7,t:"「家族ならこうすべき」という重さは？",o:["ほとんどない","顔を見せる程度の軽いもの","帰省や連絡を求められる","強く求められて負担"],s:[3,2,1,0]},
+ {a:7,t:"冠婚葬祭や行事の扱いは？",o:["相手の負担を考えて柔軟にする","普通に行う","形式やしきたりに厳しい","参加を強制され揉める"],s:[3,2,1,0]},
+ {a:8,t:"結婚・仕事・住まいに口を出される？",o:["まったくない","たまに聞かれる程度","よく口を出される","決めたことに反対される"],s:[3,2,1,0]},
+ {a:8,t:"行き先や予定を報告するよう求められる？",o:["まったくない","聞かれたら答える程度","報告しないと心配される","細かく管理される"],s:[3,2,1,0]},
+ {a:9,t:"老後・跡継ぎ・孫などを期待されている？",o:["期待されていない","うっすら感じる","はっきり言われる","強く求められている"],s:[3,2,1,0]},
+ {a:9,t:"期待に応えなきゃ、と感じたことは？",o:["感じたことがない","たまにある","よく感じる","いつも重荷に感じる"],s:[3,2,1,0]},
+ {a:10,t:"揉めることはある？",o:["ほぼない","たまに小さく揉める","会うたびに揉める","いつも険悪"],s:[3,2,1,0]},
+ {a:10,t:"嫌味・否定・他人との比較をされる？",o:["ない","たまにある","よくある","会えば必ずある"],s:[3,2,1,0]},
+ {a:11,t:"揉めたあと元に戻れる？",o:["すぐ戻れる","時間はかかるが戻れる","揉めないので分からない","戻れず引きずる"],s:[3,2,2,0]},
+ {a:11,t:"揉めたときの終わらせ方は？",o:["お互い謝れる","自然に水に流す","揉める場面がない","蒸し返す・誰かが折れ続ける"],s:[3,2,2,0]}
+];
+const SAMPLE=[2,2,2,2,2,2,2,1,3,2,0,0,1,1,1,0,0,0,0,0,0,0,2,2];
+let ans=Array(Q.length).fill(null), isSample=false;
+
+const box=document.getElementById("questions");
+let lastG="";
+Q.forEach((q,i)=>{
+  const ax=AX[q.a];
+  if(ax.g!==lastG){lastG=ax.g;const h=document.createElement("h2");h.className="group-h";
+    h.innerHTML=ax.g==="近さ"?"近さ<small>会う・話す・気持ちの距離</small>":"丈夫さ<small>揉めにくさと支え合い</small>";box.appendChild(h);}
+  const d=document.createElement("fieldset");d.className="q";d.style.margin="10px 0 0";
+  d.innerHTML=`<legend class="q-title"><span class="tag">${ax.k}</span> ${q.t}</legend><div class="opts">${q.o.map((o,j)=>`<label class="opt"><input type="radio" name="q${i}" id="q${i}_${j}" value="${j}"><span>${o}</span></label>`).join("")}</div>`;
+  box.appendChild(d);
+});
+box.addEventListener("change",e=>{const m=e.target.name.match(/q(\d+)/);if(!m)return;ans[+m[1]]=+e.target.value;
+  if(isSample){isSample=false;document.getElementById("note").hidden=true;}render();});
+document.getElementById("reset").addEventListener("click",()=>{ans=Array(Q.length).fill(null);isSample=false;
+  document.querySelectorAll("input").forEach(x=>x.checked=false);render();});
+function sync(){ans.forEach((a,i)=>{if(a!=null){const el=document.getElementById(`q${i}_${a}`);if(el)el.checked=true;}});}
+
+function qs(i){const a=ans[i];if(a==null)return null;return Math.max(0,Q[i].s[a]);}
+function axis(ai){const v=Q.map((q,i)=>q.a===ai?qs(i):null).filter(x=>x!=null);return v.length?v.reduce((p,c)=>p+c,0)/v.length:null;}
+function avgAx(list){const v=list.map(axis).filter(x=>x!=null);return v.length?v.reduce((p,c)=>p+c,0)/v.length:null;}
+
+const TYPES=[
+ {r:"S",n:"密着型",v:[3,3,3,3,3,2.5,3,2,2,2,2.5,3],t:"近さの5項目がほぼ満点。頼る・話すが日常にある。干渉や期待がやや出やすい。"},
+ {r:"A",n:"交流型",v:[2,2.5,2,2.5,2.5,2.5,2,2.5,2.5,2.5,2,3],t:"全体に丸い形。ほどよく会って近況を話す。小さく揉めてもすぐ戻る。"},
+ {r:"B",n:"親密だが遠距離型",v:[1,2,1.5,2.5,2,2.5,2,2.5,2.5,2.5,2.5,2.5],t:"距離と会う頻度だけ凹む。会えば楽しく、連絡で気持ちがつながっている。"},
+ {r:"C",n:"淡白・儀礼型",v:[1,1,1,1.2,0.6,2.5,1.5,2.5,3,3,3,2],t:"左側(近さ)が小さく、右側(丈夫さ)が大きい。用件中心で深い話はしないが、揉める要因もない。"},
+ {r:"D",n:"疎遠型",v:[0.5,0.3,0.3,1,0.3,1.5,0.5,2.5,3,3,2.5,1.5],t:"近さも助け合いも細い。敵意はないので、きっかけがあれば戻れる。"},
+ {r:"E",n:"不仲型",v:[2,2,1.5,0.3,0.5,0.5,1,0.8,0.5,0.8,0.3,0.3],t:"会う頻度はあるのに、居心地・対立・修復が潰れている。近いのに右側がへこむ形。"},
+ {r:"F",n:"断絶型",v:[0.5,0,0,0,0,0.3,0,1.5,2,2,1,0],t:"ほぼ中心に縮む。連絡を断つことで平穏を保っている状態。"},
+ {r:"番外",n:"過干渉型",v:[3,3,3,1.5,1.5,1.5,2.5,0.5,0.3,0.5,1.5,1.5],t:"距離・連絡・会うは満点なのに、義務感・干渉・期待が潰れる。外からは仲良しに見えやすい。"}
+];
+let cmp=null;
+function draw(svg,vals,opt){
+  const cx=130,cy=130,R=opt.mini?110:88,n=AX.length;let h="";
+  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n;return[cx+r*Math.cos(a),cy+r*Math.sin(a)];};
+  [1,2,3].forEach(l=>{h+=`<polygon points="${AX.map((_,i)=>pt(i,R*l/3).join(",")).join(" ")}" fill="none" stroke="var(--line)" stroke-width="${opt.mini?1.5:1}"/>`;});
+  AX.forEach((x,i)=>{const[ex,ey]=pt(i,R);h+=`<line x1="${cx}" y1="${cy}" x2="${ex}" y2="${ey}" stroke="var(--line)"/>`;
+    if(!opt.mini){const[lx,ly]=pt(i,R+20);h+=`<text x="${lx}" y="${ly+3}" text-anchor="middle" style="fill:${x.g==="近さ"?"var(--ai)":"var(--ok)"}">${x.k}</text>`;}});
+  if(opt.over){h+=`<polygon points="${opt.over.map((v,i)=>pt(i,R*v/3).join(",")).join(" ")}" fill="none" stroke="var(--shu)" stroke-width="2" stroke-dasharray="5 4"/>`;}
+  const pts=vals.map((v,i)=>pt(i,R*((v??0)/3)));
+  h+=`<polygon points="${pts.map(p=>p.join(",")).join(" ")}" fill="var(--ai)" fill-opacity="${opt.mini?.22:.18}" stroke="var(--ai)" stroke-width="${opt.mini?3:2}"/>`;
+  if(!opt.mini)pts.forEach((p,i)=>{if(vals[i]!=null)h+=`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="var(--ai)"/>`;});
+  svg.innerHTML=h;
+}
+const tgrid=document.getElementById("tgrid");
+TYPES.forEach((T,i)=>{const b=document.createElement("button");b.type="button";b.className="tcard";b.id="t_"+i;b.setAttribute("aria-pressed","false");
+  b.innerHTML=`<span class="tl">${T.r}</span><span class="tn">${T.n}</span><svg viewBox="0 0 260 260" aria-hidden="true"></svg><span class="tt">${T.t}</span>`;
+  draw(b.querySelector("svg"),T.v,{mini:true});
+  b.addEventListener("click",()=>{cmp=i;render();document.querySelector(".result").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});});tgrid.appendChild(b);});
+const RANKS={S:["密着型","会う・話す・頼るが日常にある関係。干渉の項目も低ければ理想形です。"],
+ A:["交流型","ほどよく会って近況を共有する、いわゆる仲の良い家族。"],
+ B:["親密だが遠距離型","頻度は控えめでも気持ちのつながりがある関係。日本で最も多い層の一つです。"],
+ C:["淡白・儀礼型","挨拶や用件中心で、深い話はしない関係。対立がなければ安定した形です。"],
+ D:["疎遠型","接触は最低限。敵意がなければ、きっかけがあれば戻れる距離です。"],
+ E:["不仲型","会うと揉める、修復が難しい状態。頻度に関係なく、関係の質に課題があります。"],
+ F:["断絶型","意図的に連絡を断っている状態。本人にとっての平穏のための選択であることも多いです。"]};
+
+function render(){
+  sync();
+  const vals=AX.map((_,i)=>axis(i));
+  const c=avgAx([0,1,2,3,4]),s=avgAx([5,6,7,8,9,10,11]);
+  const answered=ans.filter(a=>a!=null).length;
+  document.querySelector(".result").classList.toggle("empty",answered===0);
+  document.getElementById("progress").textContent=`回答 ${answered} / ${Q.length}`;
+  const set=(id,v)=>{document.getElementById("m"+id).style.width=v==null?"0%":(v/3*100)+"%";document.getElementById("v"+id).textContent=v==null?"–":Math.round(v/3*100);};
+  set("Close",c);set("Stable",s);
+  const conflict=axis(10),repair=axis(11);
+  let r=null;
+  if(ans[2]===4)r="F";
+  else if(conflict!=null&&repair!=null&&conflict<=1&&repair<=1)r="E";
+  else if(c!=null&&answered>=8)r=c>=2.5?"S":c>=1.9?"A":c>=1.3?"B":c>=0.7?"C":"D";
+  document.getElementById("rank").textContent=r??"–";
+  document.getElementById("rankName").textContent=r?RANKS[r][0]+(isSample?"(例)":""):(answered?"もう少し答えてください":"答えると、ここにグラフとランクが出ます");
+  let cm=r?RANKS[r][1]:"";
+  if(r&&r!=="E"&&r!=="F"&&s!=null){cm+=s>=2.3?" 丈夫さが高く、揉める要因がほとんどありません。見た目のランク以上に壊れにくい関係です。":s>=1.5?" 丈夫さは標準的です。":" 丈夫さが低めで、干渉や義務感が負担になっている可能性があります。";}
+  if(r&&answered<Q.length)cm+=` (未回答 ${Q.length-answered}問。全部答えると精度が上がります)`;
+  document.getElementById("comment").textContent=cm;
+  const near=(axis(0)??0)>=2&&(axis(1)??0)>=2, pressure=(axis(8)??3)<=1.5&&(axis(9)??3)<=1.5;
+  document.getElementById("flag").textContent=near&&pressure?"近さと干渉・期待がどちらも高めです。外からは仲良しに見えても、近すぎて息苦しい状態になりやすい組み合わせです。":"";
+}
+  const mineIdx=r?TYPES.findIndex(T=>T.r===r):-1;
+  const ci=cmp??(mineIdx>=0?mineIdx:null);
+  TYPES.forEach((T,i)=>{const el=document.getElementById("t_"+i);el.setAttribute("aria-pressed",String(i===ci));el.classList.toggle("mine",i===mineIdx);});
+  draw(document.getElementById("radar"),vals,{over:ci!=null?TYPES[ci].v:null});
+  const ce=document.getElementById("compare");
+  if(ci==null||answered===0){document.getElementById("cmpName").textContent="比べるタイプ";ce.textContent="";}
+  else{const T=TYPES[ci];document.getElementById("cmpName").textContent=`${T.r} ${T.n}`;
+    const d=AX.map((x,i)=>({k:x.k,d:(vals[i]??0)-T.v[i]})).filter(x=>vals[AX.findIndex(a=>a.k===x.k)]!=null).sort((p,q)=>Math.abs(q.d)-Math.abs(p.d)).filter(x=>Math.abs(x.d)>=0.6).slice(0,3);
+    const nm=i=>`${TYPES[i].r}(${TYPES[i].n})`;
+    if(!d.length)ce.innerHTML=`<b>${nm(ci)}</b>の典型とほぼ同じ形です。`;
+    else ce.innerHTML=`<b>${nm(ci)}</b>と比べて、`+d.map(x=>`「${x.k}」が${x.d>0?"高い":"低い"}`).join("、")+"。";}
+render();
+</script>
+
+<script>
+if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
+</script>
+</body>
+</html>
